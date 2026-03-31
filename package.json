@@ -1,0 +1,19 @@
+{
+  "name": "medicare-ai-hospital-system",
+  "version": "1.0.0",
+  "description": "AI-Driven Hospital Management System — Monorepo",
+  "private": true,
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../patient-app && npm install && cd ../medical-staff-app && npm install && cd ../medicine-staff-app && npm install && cd ../admin-app && npm install && cd ../doctor-app && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:patient": "cd patient-app && npm run dev",
+    "dev:medical-staff": "cd medical-staff-app && npm run dev",
+    "dev:medicine-staff": "cd medicine-staff-app && npm run dev",
+    "dev:admin": "cd admin-app && npm run dev",
+    "dev:doctor": "cd doctor-app && npm run dev",
+    "docker:up": "cd backend && docker-compose up -d",
+    "docker:down": "cd backend && docker-compose down",
+    "docker:seed": "cd backend && docker-compose exec backend npm run db:seed",
+    "docker:build": "cd backend && docker-compose up -d --build"
+  }
+}

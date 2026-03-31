@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+*.log
+uploads/documents/*
+uploads/images/*
+uploads/temp/*
+!uploads/documents/.gitkeep
+!uploads/images/.gitkeep
+!uploads/temp/.gitkeep
+.DS_Store
+logs/*.log
+start.bat
