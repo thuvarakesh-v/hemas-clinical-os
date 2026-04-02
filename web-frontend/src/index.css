@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #f7f9fb;
+  --ink: #191c1e;
+  --muted: #3d4947;
+  --line: #f1f5f9;
+  --surface-2: #f2f4f6;
+  --teal: #00685f;
+  --red: #ba1a1a;
+  --amber: #924628;
+  --peach: #ffb59a;
+  --navy: #0f172a;
+  --red-soft: #ffdad6;
+  --red-strong: #93000a;
+  --slate-700: #334155;
+  --slate-600: #545f73;
+  --slate-500: #64748b;
+  --slate-400: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  font-family: Inter, sans-serif;
+  overflow-y: scroll;
+  background: radial-gradient(circle at 8% -5%, #e8f4f2 0%, transparent 44%),
+    radial-gradient(circle at 92% 2%, #fff0ec 0%, transparent 36%),
+    var(--app-bg);
+  color: var(--ink);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-manrope {
+  font-family: Manrope, sans-serif;
+}
