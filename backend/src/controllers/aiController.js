@@ -133,14 +133,21 @@ function detectIntent(message) {
 }
 
 function extractDoctorName(message) {
+  const stopWords = /^(for|about|to|on|next|tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at|the|a|an|please|appointment|slot|visit|consult)$/i;
   const patterns = [
-    /with\s+dr\.?\s+([a-z][a-z\s]{1,30}?)(?:\s+(?:for|about|to|on|next|tomorrow|today|monday|tuesday|wednesday|thursday|friday)|$)/i,
-    /dr\.?\s+([a-z][a-z\s]{1,20}?)(?:'s|'s|\s+is|\s+for|\s+about|\s*$)/i,
-    /doctor\s+([a-z][a-z\s]{1,20}?)(?:\s+for|\s+about|\s*$)/i,
+    /with\s+dr\.?\s+([a-z][a-z\s]{1,30}?)(?:\s+(?:for|about|to|on|at|next|tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|[,.]|$)/i,
+    /book\s+(?:an?\s+)?appointment\s+with\s+(?:dr\.?\s+)?([a-z][a-z\s]{1,30}?)(?:\s+(?:for|about|to|on|at)|[,.]|$)/i,
+    /see\s+dr\.?\s+([a-z][a-z\s]{1,20}?)(?:\s+(?:for|about|to|on|at)|[,.]|$)/i,
+    /dr\.?\s+([a-z][a-z\s]{1,20}?)(?:'s|\s+is|\s+for|\s+about|\s+on|\s+at|[,.]|\s*$)/i,
+    /doctor\s+([a-z][a-z\s]{1,20}?)(?:\s+for|\s+about|\s+on|\s+at|[,.]|\s*$)/i,
   ];
   for (const p of patterns) {
     const m = message.match(p);
-    if (m && m[1].trim().length > 1) return m[1].trim().toLowerCase();
+    if (m && m[1]) {
+      // Clean up the captured name: remove stop words from the end
+      const parts = m[1].trim().split(/\s+/).filter(w => w.length > 1 && !stopWords.test(w));
+      if (parts.length > 0) return parts.join(' ').toLowerCase();
+    }
   }
   return null;
 }
@@ -386,24 +393,49 @@ async function executeAction(intent, message, userId) {
 
       let matched = null;
 
-      // 1. Match by name (most specific)
+      // 1. Match by name (most specific) — strict priority, no silent fallthrough
       if (doctorName) {
-        const parts = doctorName.split(/\s+/).filter(p => p.length > 1);
-        matched = allDoctors.find(d => {
-          const fn = d.first_name.toLowerCase();
-          const ln = d.last_name.toLowerCase();
-          return parts.some(p => fn.includes(p) || ln.includes(p));
-        });
+        const nameLower = doctorName.toLowerCase();
+        const parts = nameLower.split(/\s+/).filter(p => p.length > 1);
+
+        matched =
+          // Exact full name
+          allDoctors.find(d => `${d.first_name} ${d.last_name}`.toLowerCase() === nameLower) ||
+          // Exact last name
+          allDoctors.find(d => d.last_name.toLowerCase() === nameLower) ||
+          // Exact first name
+          allDoctors.find(d => d.first_name.toLowerCase() === nameLower) ||
+          // All parts found in full name
+          allDoctors.find(d => {
+            const full = `${d.first_name} ${d.last_name}`.toLowerCase();
+            return parts.every(p => full.includes(p));
+          }) ||
+          // Any part is exact word in first or last name
+          allDoctors.find(d => {
+            const fn = d.first_name.toLowerCase();
+            const ln = d.last_name.toLowerCase();
+            return parts.some(p => fn === p || ln === p || ln.startsWith(p) || fn.startsWith(p));
+          });
+
         console.log(`[Booking] Name match for "${doctorName}": ${matched ? matched.first_name + ' ' + matched.last_name : 'none'}`);
+
+        // User named a specific doctor but we can't find them — do NOT fall through to a random doctor
+        if (!matched) {
+          return {
+            success: false,
+            message: `❌ No doctor found matching **"${doctorName}"**.\n\nPlease check the name and try again, or say *"list doctors"* to see all available doctors.`,
+            data: null,
+          };
+        }
       }
 
-      // 2. Match by specialty
+      // 2. Match by specialty (only when no doctor name was given)
       if (!matched && specialty) {
         matched = allDoctors.find(d => d.specialization.toLowerCase().includes(specialty.toLowerCase().substring(0, 6)));
         console.log(`[Booking] Specialty match for "${specialty}": ${matched ? matched.first_name + ' ' + matched.last_name : 'none'}`);
       }
 
-      // 3. Best rated general practitioner
+      // 3. Best rated general practitioner fallback (only when no name/specialty given)
       if (!matched) {
         matched = allDoctors.find(d =>
           d.specialization.toLowerCase().includes('general') ||
@@ -473,7 +505,7 @@ async function executeAction(intent, message, userId) {
         : '';
       return {
         success: true,
-        message: `\u2705 **Appointment Booked Successfully!**\\n\\n\U0001f468\u200d\u2695\ufe0f **Dr. ${doctor.first_name} ${doctor.last_name}**\\n\U0001f3e5 ${doctor.specialization}\\n\U0001f4c5 **Date:** ${slot.date}\\n\u23f0 **Time:** ${slot.time}\\n\U0001f4b0 **Fee:** LKR ${doctor.consultation_fee}\\n\U0001f4cb **Reason:** ${reason}${timeNote}\\n\\n_Your appointment is confirmed! View it in the Appointments section._`,
+        message: `✅ **Appointment Booked Successfully!**\n\n👨‍⚕️ **Dr. ${doctor.first_name} ${doctor.last_name}**\n🏥 ${doctor.specialization}\n📅 **Date:** ${slot.date}\n⏰ **Time:** ${slot.time}\n💰 **Fee:** LKR ${doctor.consultation_fee}\n📋 **Reason:** ${reason}${timeNote}\n\n_Your appointment is confirmed! View it in the Appointments section._`,
         data: { appointmentId: appt.id, doctor: doctor.first_name + ' ' + doctor.last_name, date: slot.date, time: slot.time },
       };
     }
